@@ -1,4 +1,4 @@
-package com.OtakuVadER
+package com.Phisher98
 
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
@@ -32,41 +32,37 @@ open class OnepaceProvider : MainAPI() {
         val document = app.get(link).document
         val home =
             document.select("div.seasons.aa-crd > div.seasons-bx").map {
-                it.toSearchResult(request.data) // Pass the request data to differentiate between sub and dub
+                it.toSearchResult()
             }
         return newHomePageResponse(request.name, home)
     }
 
-    private fun Element.toSearchResult(requestData: String): AnimeSearchResponse {
-        val hreftitle = this.selectFirst("picture img")?.attr("alt")
-        var href = ""
-        var seasonNumber: Int? = null
+    private fun Element.toSearchResult(): AnimeSearchResponse {
+        val hreftitle= this.selectFirst("picture img")?.attr("alt")
+        var href=""
         if (hreftitle!!.isNotEmpty()) {
-            // Determine the correct URL for sub or dub
-            href = if (requestData.contains("dub")) {
-                "https://onepace.me/series/one-pace-english-dub"
+            if (hreftitle.contains("Dub")) {
+                href = "https://onepace.me/series/one-pace-english-dub"
             } else {
-                "https://onepace.me/series/one-pace-english-sub"
+                href = "https://onepace.me/series/one-pace-english-sub"
             }
-
-            // Extract the season number from the title
-            seasonNumber = hreftitle.substringAfter("S").substringBefore(" ").toIntOrNull()
         }
-        val title = this.selectFirst("p")?.text() ?: ""
-        val posterUrl = ArcPosters.arcPosters[seasonNumber] // Get the arc poster from ArcPosters
-            ?: this.selectFirst("img")?.attr("data-src") // Fall back to the scraped poster if not found
-
-        val dubtype: Boolean
-        val subtype: Boolean
-        if (requestData.contains("dub")) {
+        val title = this.selectFirst("p")?.text() ?:""
+        val posterUrl = this.selectFirst("img")?.attr("src")
+        val dubtype:Boolean
+        val subtype:Boolean
+        if (hreftitle.contains("Dub"))
+        {
             dubtype = true
-            subtype = false
-        } else {
+            subtype =false
+        }
+        else
+        {
             dubtype = false
             subtype = true
-        }
 
-        return newAnimeSearchResponse(title, Media(href, posterUrl, title).toJson(), TvType.Anime, false) {
+        }
+        return newAnimeSearchResponse(title, Media(href, posterUrl,title).toJson(), TvType.Anime, false) {
             this.posterUrl = posterUrl
             addDubStatus(dubExist = dubtype, subExist = subtype)
         }
@@ -75,52 +71,45 @@ open class OnepaceProvider : MainAPI() {
     override suspend fun search(query: String): List<AnimeSearchResponse> {
         val document = app.get("$mainUrl/?s=$query").document
         return document.select("ul[data-results] li article").mapNotNull {
-            it.toSearchResult("") // You can pass an empty string or modify as needed
+            it.toSearchResult()
         }
     }
 
     override suspend fun load(url: String): LoadResponse {
+        Log.d("Phisher",url)
         val media = parseJson<Media>(url)
         val document = app.get(media.url).document
-
-        // Use the mediaType or any other indicator to determine if this is a TV show or a movie
-        val title = media.mediaType ?: "No Title"
-        val defaultPoster = "https://images3.alphacoders.com/134/1342304.jpeg"  // Default poster in case no poster is found
+        val ArcINT=media.mediaType?.substringAfter("Arc ")
+        val element= document.selectFirst("div.seasons.aa-crd > div.seasons-bx:contains($ArcINT)")
+        val title = media.mediaType ?:"No Title"
+        val poster = "https://images3.alphacoders.com/134/1342304.jpeg"
         val plot = document.selectFirst("div.entry-content p")?.text()?.trim()
             ?: document.selectFirst("meta[name=twitter:description]")?.attr("content")
         val year = (document.selectFirst("span.year")?.text()?.trim()
             ?: document.selectFirst("meta[property=og:updated_time]")?.attr("content")
                 ?.substringBefore("-"))?.toIntOrNull()
-
-        // Check if there are episodes (for TV shows)
-        val episodeElements = document.select("ul.seasons-lst.anm-a li")
-
-        return if (episodeElements.isEmpty()) {
-            // It's a movie
+        val lst = element?.select("ul.seasons-lst.anm-a li")
+        Log.d("Phisher","$ArcINT $element $title $lst")
+        return if (lst!!.isEmpty()) {
             newMovieLoadResponse(title, url, TvType.Movie, Media(
                 media.url,
-                mediaType = 1 // Assuming 1 stands for movies
+                mediaType = 1.toString()
             ).toJson()) {
-                this.posterUrl = defaultPoster
+                this.posterUrl = poster
                 this.plot = plot
                 this.year = year
             }
         } else {
-            // It's a TV series
-            val episodes = episodeElements.mapNotNull {
+            @Suppress("NAME_SHADOWING") val episodes = element.select("ul.seasons-lst.anm-a li").mapNotNull {
                 val name = it.selectFirst("h3.title")?.ownText() ?: "null"
                 val href = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
-                val seasonNumber = it.selectFirst("h3.title > span")?.text().toString().substringAfter("S").substringBefore("-")
-                val season = seasonNumber.toIntOrNull()
-
-                // Use the default poster for episodes
-                val episodePoster = defaultPoster 
-
-                Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = episodePoster, season = season)
+                val poster= "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/OnePack.png"
+                val seasonnumber = it.selectFirst("h3.title > span")?.text().toString().substringAfter("S").substringBefore("-")
+                val season=seasonnumber.toIntOrNull()
+                Episode(Media(href, mediaType = 2.toString()).toJson(), name, posterUrl = poster,season = season)
             }
-
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = defaultPoster  // You can use a more specific poster for the series itself if available
+                this.posterUrl = poster
                 this.plot = plot
                 this.year = year
             }
@@ -140,11 +129,12 @@ open class OnepaceProvider : MainAPI() {
             val link = app.get("$mainUrl/?trdekho=$i&trid=$term&trtype=${media.mediaType}")
                 .document.selectFirst("iframe")?.attr("src")
                 ?: throw ErrorLoadingException("no iframe found")
-            Log.d("VadER", link)
-            loadExtractor(link, subtitleCallback, callback)
+            Log.d("VadER",link)
+            loadExtractor(link,subtitleCallback, callback)
         }
         return true
     }
 
     data class Media(val url: String, val poster: String? = null, val mediaType: String? = null)
+
 }
