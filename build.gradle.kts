@@ -53,8 +53,8 @@ subprojects {
             targetCompatibility = JavaVersion.VERSION_1_8
         }
 
-        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-            kotlinOptions {
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).configureEach {
+            it.kotlinOptions {
                 jvmTarget = "1.8" // Required
                 // Disables some unnecessary features
                 freeCompilerArgs = freeCompilerArgs +
