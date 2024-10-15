@@ -89,7 +89,7 @@ open class OnepaceProvider : MainAPI() {
             ?: document.selectFirst("meta[property=og:updated_time]")?.attr("content")
                 ?.substringBefore("-"))?.toIntOrNull()
         val lst = element?.select("ul.seasons-lst.anm-a li")
-        if (lst == null || lst.isEmpty()) {
+        return if (lst!!.isEmpty()) {
             newMovieLoadResponse(title, url, TvType.Movie, Media(
                 media.url,
                 mediaType = 1
@@ -116,17 +116,12 @@ open class OnepaceProvider : MainAPI() {
     }
 
     override suspend fun loadLinks(
-            return try {
-            data: String,
-            isCasting: Boolean,
-            subtitleCallback: (SubtitleFile) -> Unit,
-            callback: (ExtractorLink) -> Unit,
-        ): Boolean {
-            val media = parseJson<Media>(data)
-    } catch (e: Exception) {
-        Log.e("Error in loadLinks", e.message ?: "Unknown error")
-        false
-    }
+        data: String,
+        isCasting: Boolean,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit,
+    ): Boolean {
+        val media = parseJson<Media>(data)
         val body = app.get(media.url).document.selectFirst("body")?.attr("class") ?: return false
         val term = Regex("""(?:term|postid)-(\d+)""").find(body)?.groupValues?.get(1) ?: throw ErrorLoadingException("no id found")
         for (i in 0..4) {
