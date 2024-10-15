@@ -17,74 +17,65 @@ open class OnepaceProvider : MainAPI() {
         TvType.Anime
     )
 
-    // Show two entries on the homepage: One Pace Dub and One Pace Sub
+    // Show separate entries for each arc on the homepage
     override suspend fun getMainPage(
         page: Int,
         request: MainPageRequest
     ): HomePageResponse {
-        // Define Dub and Sub entries
-        val homeEntries = listOf(
-            newAnimeSearchResponse("One Pace Dub", Media("$mainUrl/dub", "").toJson(), TvType.Anime, false) {
-                this.posterUrl = "https://onepace.me/wp-content/uploads/2021/05/dub-cover.jpg" // Example dub poster
-            },
-            newAnimeSearchResponse("One Pace Sub", Media("$mainUrl/sub", "").toJson(), TvType.Anime, false) {
-                this.posterUrl = "https://onepace.me/wp-content/uploads/2021/05/sub-cover.jpg" // Example sub poster
+        // Define each arc entry with its title, URL, and poster
+        val arcs = listOf(
+            ArcEntry("Romance Dawn Arc (Sub)", "$mainUrl/arc-1-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-romance-dawn-arc.jpeg.webp"),
+            ArcEntry("Orange Town Arc (Sub)", "$mainUrl/arc-2-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-orange-town-arc.jpeg.webp"),
+            ArcEntry("Syrup Village Arc (Sub)", "$mainUrl/arc-3-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-syrup-village-arc.jpeg.webp"),
+            ArcEntry("Gaimon Arc (Sub)", "$mainUrl/arc-4-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-gaimon-arc.jpeg.webp"),
+            ArcEntry("Baratie Arc (Sub)", "$mainUrl/arc-5-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-baratie-arc.jpeg.webp"),
+            ArcEntry("Arlong Park Arc (Sub)", "$mainUrl/arc-6-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-arlong-park-arc.jpeg.webp"),
+            // Add all remaining arcs here, both Dub and Sub...
+            ArcEntry("Romance Dawn Arc (Dub)", "$mainUrl/arc-1-dub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-romance-dawn-arc.jpeg.webp"),
+            ArcEntry("Orange Town Arc (Dub)", "$mainUrl/arc-2-dub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-orange-town-arc.jpeg.webp"),
+            // Continue for the rest of the arcs...
+        )
+
+        // Create homepage entries for each arc
+        val homeEntries = arcs.map { arc ->
+            newAnimeSearchResponse(arc.title, Media(arc.url, arc.posterUrl).toJson(), TvType.Anime, false) {
+                this.posterUrl = arc.posterUrl
             }
-        )
-        return newHomePageResponse("One Pace", homeEntries)
+        }
+
+        return newHomePageResponse("One Pace Arcs", homeEntries)
     }
 
-    // This function loads the respective arcs as seasons for Dub or Sub
+    // Load the respective arc's episodes when clicked
     override suspend fun load(url: String): LoadResponse {
-        // Check if the URL is for Dub or Sub and load the respective arcs as seasons
-        return when {
-            url.contains("dub") -> loadDubArcs(url)
-            url.contains("sub") -> loadSubArcs(url)
-            else -> throw ErrorLoadingException("Unknown URL")
-        }
-    }
+        val document = app.get(url).document
+        val title = document.selectFirst("h1.entry-title")?.text()?.trim() ?: "No Title"
+        val poster = document.selectFirst("div.post-thumbnail figure img")?.attr("src")
+            ?: "https://images3.alphacoders.com/134/1342304.jpeg"  // Default poster if not found
+        val plot = document.selectFirst("div.entry-content p")?.text()?.trim()
+            ?: document.selectFirst("meta[name=twitter:description]")?.attr("content")
 
-    // Load all dubbed arcs as seasons
-    private suspend fun loadDubArcs(url: String): LoadResponse {
-        val title = "One Pace Dub"
-        val poster = "https://onepace.me/wp-content/uploads/2021/05/dub-cover.jpg" // Example dub poster
+        // Check if there are episodes for the specific arc
+        val episodeElements = document.select("ul.seasons-lst.anm-a li")
 
-        // List of dubbed arcs (seasons)
-        val dubbedArcs = listOf(
-            ArcEntry("Romance Dawn Arc (Dub)", "$mainUrl/arc-1/dub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-romance-dawn-arc.jpeg.webp"),
-            ArcEntry("Orange Town Arc (Dub)", "$mainUrl/arc-2/dub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-orange-town-arc.jpeg.webp")
-            // Add all other dubbed arcs here...
-        )
+        return if (episodeElements.isEmpty()) {
+            // Handle as a movie or standalone content if no episodes found
+            newMovieLoadResponse(title, url, TvType.Movie) {
+                this.posterUrl = poster
+                this.plot = plot
+            }
+        } else {
+            // Load episodes for the arc
+            val episodes = episodeElements.mapNotNull {
+                val episodeTitle = it.selectFirst("h3.title")?.ownText() ?: return@mapNotNull null
+                val episodeUrl = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
+                Episode(Media(episodeUrl).toJson(), episodeTitle)
+            }
 
-        // Create episodes for each dubbed arc (as seasons)
-        val seasons = dubbedArcs.map { arc ->
-            Episode(arc.url, arc.title, posterUrl = arc.posterUrl)
-        }
-
-        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, seasons) {
-            this.posterUrl = poster
-        }
-    }
-
-    // Load all subbed arcs as seasons
-    private suspend fun loadSubArcs(url: String): LoadResponse {
-        val title = "One Pace Sub"
-        val poster = "https://onepace.me/wp-content/uploads/2021/05/sub-cover.jpg" // Example sub poster
-
-        // List of subbed arcs (seasons)
-        val subbedArcs = listOf(
-            ArcEntry("Romance Dawn Arc (Sub)", "$mainUrl/arc-1/sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-romance-dawn-arc.jpeg.webp"),
-            ArcEntry("Orange Town Arc (Sub)", "$mainUrl/arc-2/sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-orange-town-arc.jpeg.webp")
-            // Add all other subbed arcs here...
-        )
-
-        // Create episodes for each subbed arc (as seasons)
-        val seasons = subbedArcs.map { arc ->
-            Episode(arc.url, arc.title, posterUrl = arc.posterUrl)
-        }
-
-        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, seasons) {
-            this.posterUrl = poster
+            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                this.posterUrl = poster
+                this.plot = plot
+            }
         }
     }
 
@@ -102,8 +93,8 @@ open class OnepaceProvider : MainAPI() {
         return true
     }
 
-    // Data class to manage Arc entries
+    // ArcEntry data class for managing arc information
     data class ArcEntry(val title: String, val url: String, val posterUrl: String)
-    
+
     data class Media(val url: String, val poster: String? = null, val mediaType: String? = null)
 }
