@@ -1,4 +1,4 @@
-version = 4
+version = 5
 
 
 cloudstream {
@@ -20,5 +20,5 @@ cloudstream {
         "Anime"
     )
 
-    iconUrl = "https://raw.githubusercontent.com/Rowdy-Avocado/Rowdycado-Extensions/master/logos/onepace.png"
+    iconUrl = "https://raw.githubusercontent.com/OtakuVadER/OnePace-Extension/logos/onepace.png"
 }
