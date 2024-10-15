@@ -1,12 +1,13 @@
 package com.OtakuVadER
 
+import android.content.Context
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
-import android.content.Context
 
 @CloudstreamPlugin
-class OnePacePlugin: Plugin() {
+class OnePacePlugin : Plugin() {
     override fun load(context: Context) {
+        registerMainAPI(OnePace())
         registerMainAPI(OnepaceProvider())
         registerExtractorAPI(Streamruby())
         registerExtractorAPI(VidStream())
