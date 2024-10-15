@@ -7,9 +7,7 @@ import android.content.Context
 @CloudstreamPlugin
 class OnePacePlugin: Plugin() {
     override fun load(context: Context) {
-        registerMainAPI(AnimeDekhoProvider())
         registerMainAPI(OnepaceProvider())
-        registerMainAPI(HindiSubAnime())
         registerExtractorAPI(Streamruby())
         registerExtractorAPI(VidStream())
         registerExtractorAPI(Vidmolynet())
