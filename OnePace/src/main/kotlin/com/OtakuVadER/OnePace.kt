@@ -21,47 +21,25 @@ open class OnepaceProvider : MainAPI() {
     override val mainPage =
         mainPageOf(
             "/series/one-pace-english-sub/" to "One Pace English Sub",
-            "/series/one-pace-english-dub/" to "One Pace English Dub",
+            "/series/one-pace-english-dub/" to "One Pace English Dub"
         )
 
+    // This function will fetch each arc individually and list them separately on the homepage
     override suspend fun getMainPage(
         page: Int,
         request: MainPageRequest,
     ): HomePageResponse {
-        val link = "$mainUrl${request.data}"
-        val document = app.get(link).document
-        val home =
-            document.select("div.seasons.aa-crd > div.seasons-bx").map {
-                it.toSearchResult()
+        val arcs = ArcPosters.arcPosters
+        val home = arcs.map { (arcNumber, arcPosterUrl) ->
+            // Create a separate entry for each arc
+            val title = "Arc $arcNumber"
+            val arcUrl = "$mainUrl/series/one-pace-arc-$arcNumber/"  // Assuming each arc has a unique URL pattern
+            newAnimeSearchResponse(title, Media(arcUrl, arcPosterUrl, title).toJson(), TvType.Anime, false) {
+                this.posterUrl = arcPosterUrl
             }
-        return newHomePageResponse(request.name, home)
-    }
+        }
 
-    private fun Element.toSearchResult(): AnimeSearchResponse {
-        val hreftitle = this.selectFirst("picture img")?.attr("alt")
-        var href = ""
-        if (hreftitle!!.isNotEmpty()) {
-            if (hreftitle.contains("Dub")) {
-                href = "https://onepace.me/series/one-pace-english-dub"
-            } else {
-                href = "https://onepace.me/series/one-pace-english-sub"
-            }
-        }
-        val title = this.selectFirst("p")?.text() ?: ""
-        val posterUrl = this.selectFirst("img")?.attr("data-src")
-        val dubtype: Boolean
-        val subtype: Boolean
-        if (hreftitle.contains("Dub")) {
-            dubtype = true
-            subtype = false
-        } else {
-            dubtype = false
-            subtype = true
-        }
-        return newAnimeSearchResponse(title, Media(href, posterUrl, title).toJson(), TvType.Anime, false) {
-            this.posterUrl = posterUrl
-            addDubStatus(dubExist = dubtype, subExist = subtype)
-        }
+        return newHomePageResponse("One Pace Arcs", home)
     }
 
     override suspend fun search(query: String): List<AnimeSearchResponse> {
@@ -71,11 +49,12 @@ open class OnepaceProvider : MainAPI() {
         }
     }
 
+    // This function will load episodes for each arc individually
     override suspend fun load(url: String): LoadResponse {
 
         val media = parseJson<Media>(url)
         val document = app.get(media.url).document
-        
+
         // Use the mediaType or any other indicator to determine if this is a TV show or a movie
         val title = media.mediaType ?: "No Title"
         val defaultPoster = "https://images3.alphacoders.com/134/1342304.jpeg"  // Default poster in case no poster is found
@@ -85,9 +64,9 @@ open class OnepaceProvider : MainAPI() {
             ?: document.selectFirst("meta[property=og:updated_time]")?.attr("content")
                 ?.substringBefore("-"))?.toIntOrNull()
 
-        // Check if there are episodes (for TV shows)
+        // Check if there are episodes for the specific arc
         val episodeElements = document.select("ul.seasons-lst.anm-a li")
-        
+
         return if (episodeElements.isEmpty()) {
             // It's a movie
             newMovieLoadResponse(title, url, TvType.Movie, Media(
@@ -99,7 +78,7 @@ open class OnepaceProvider : MainAPI() {
                 this.year = year
             }
         } else {
-            // It's a TV series
+            // Load episodes for the arc
             val episodes = episodeElements.mapNotNull {
                 val name = it.selectFirst("h3.title")?.ownText() ?: "null"
                 val href = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
@@ -111,7 +90,7 @@ open class OnepaceProvider : MainAPI() {
 
                 Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = arcPoster, season = season)
             }
-            
+
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = defaultPoster  // You can use a more specific poster for the series itself if available
                 this.plot = plot
