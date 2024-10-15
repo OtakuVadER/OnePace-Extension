@@ -40,15 +40,19 @@ open class OnepaceProvider : MainAPI() {
     private fun Element.toSearchResult(): AnimeSearchResponse {
         val hreftitle = this.selectFirst("picture img")?.attr("alt")
         var href = ""
+        var seasonNumber: Int? = null
         if (hreftitle!!.isNotEmpty()) {
-            if (hreftitle.contains("Dub")) {
-                href = "https://onepace.me/series/one-pace-english-dub"
+            href = if (hreftitle.contains("Dub")) {
+                "https://onepace.me/series/one-pace-english-dub"
             } else {
-                href = "https://onepace.me/series/one-pace-english-sub"
+                "https://onepace.me/series/one-pace-english-sub"
             }
+            // Extract the season number from the title
+            seasonNumber = hreftitle.substringAfter("S").substringBefore(" ").toIntOrNull()
         }
         val title = this.selectFirst("p")?.text() ?: ""
-        val posterUrl = this.selectFirst("img")?.attr("data-src")
+        val posterUrl = ArcPosters.arcPosters[seasonNumber] // Get the arc poster from ArcPosters
+            ?: this.selectFirst("img")?.attr("data-src") // Fall back to the scraped poster if not found
         val dubtype: Boolean
         val subtype: Boolean
         if (hreftitle.contains("Dub")) {
@@ -72,7 +76,6 @@ open class OnepaceProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
-
         val media = parseJson<Media>(url)
         val document = app.get(media.url).document
 
@@ -106,10 +109,10 @@ open class OnepaceProvider : MainAPI() {
                 val seasonNumber = it.selectFirst("h3.title > span")?.text().toString().substringAfter("S").substringBefore("-")
                 val season = seasonNumber.toIntOrNull()
 
-                // Get the poster for the arc from ArcPosters.kt
-                val arcPoster = ArcPosters.arcPosters[season] ?: defaultPoster
+                // Use the default poster for episodes
+                val episodePoster = defaultPoster 
 
-                Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = arcPoster, season = season)
+                Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = episodePoster, season = season)
             }
 
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
