@@ -13,68 +13,109 @@ open class OnepaceProvider : MainAPI() {
     override val hasMainPage = true
     override var lang = "en"
 
-    override val supportedTypes = setOf(
-        TvType.Anime
-    )
-
-    // Show separate entries for each arc on the homepage
-    override suspend fun getMainPage(
-        page: Int,
-        request: MainPageRequest
-    ): HomePageResponse {
-        // Define each arc entry with its title, URL, and poster
-        val arcs = listOf(
-            ArcEntry("Romance Dawn Arc (Sub)", "$mainUrl/arc-1-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-romance-dawn-arc.jpeg.webp"),
-            ArcEntry("Orange Town Arc (Sub)", "$mainUrl/arc-2-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-orange-town-arc.jpeg.webp"),
-            ArcEntry("Syrup Village Arc (Sub)", "$mainUrl/arc-3-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-syrup-village-arc.jpeg.webp"),
-            ArcEntry("Gaimon Arc (Sub)", "$mainUrl/arc-4-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-gaimon-arc.jpeg.webp"),
-            ArcEntry("Baratie Arc (Sub)", "$mainUrl/arc-5-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-baratie-arc.jpeg.webp"),
-            ArcEntry("Arlong Park Arc (Sub)", "$mainUrl/arc-6-sub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-arlong-park-arc.jpeg.webp"),
-            // Add all remaining arcs here, both Dub and Sub...
-            ArcEntry("Romance Dawn Arc (Dub)", "$mainUrl/arc-1-dub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-romance-dawn-arc.jpeg.webp"),
-            ArcEntry("Orange Town Arc (Dub)", "$mainUrl/arc-2-dub", "https://onepace.me/wp-content/webp-express/webp-images/uploads/2024/09/cover-orange-town-arc.jpeg.webp"),
-            // Continue for the rest of the arcs...
+    override val supportedTypes =
+        setOf(
+            TvType.Anime,
         )
 
-        // Create homepage entries for each arc
-        val homeEntries = arcs.map { arc ->
-            newAnimeSearchResponse(arc.title, Media(arc.url, arc.posterUrl).toJson(), TvType.Anime, false) {
-                this.posterUrl = arc.posterUrl
-            }
-        }
+    override val mainPage =
+        mainPageOf(
+            "/series/one-pace-english-sub/" to "One Pace English Sub",
+            "/series/one-pace-english-dub/" to "One Pace English Dub",
+        )
 
-        return newHomePageResponse("One Pace Arcs", homeEntries)
+    override suspend fun getMainPage(
+        page: Int,
+        request: MainPageRequest,
+    ): HomePageResponse {
+        val link = "$mainUrl${request.data}"
+        val document = app.get(link).document
+        val home =
+            document.select("div.seasons.aa-crd > div.seasons-bx").map {
+                it.toSearchResult()
+            }
+        return newHomePageResponse(request.name, home)
     }
 
-    // Load the respective arc's episodes when clicked
+    private fun Element.toSearchResult(): AnimeSearchResponse {
+        val hreftitle = this.selectFirst("picture img")?.attr("alt")
+        var href = ""
+        if (hreftitle!!.isNotEmpty()) {
+            if (hreftitle.contains("Dub")) {
+                href = "https://onepace.me/series/one-pace-english-dub"
+            } else {
+                href = "https://onepace.me/series/one-pace-english-sub"
+            }
+        }
+        val title = this.selectFirst("p")?.text() ?: ""
+        val posterUrl = this.selectFirst("img")?.attr("data-src")
+        val dubtype: Boolean
+        val subtype: Boolean
+        if (hreftitle.contains("Dub")) {
+            dubtype = true
+            subtype = false
+        } else {
+            dubtype = false
+            subtype = true
+        }
+        return newAnimeSearchResponse(title, Media(href, posterUrl, title).toJson(), TvType.Anime, false) {
+            this.posterUrl = posterUrl
+            addDubStatus(dubExist = dubtype, subExist = subtype)
+        }
+    }
+
+    override suspend fun search(query: String): List<AnimeSearchResponse> {
+        val document = app.get("$mainUrl/?s=$query").document
+        return document.select("ul[data-results] li article").mapNotNull {
+            it.toSearchResult()
+        }
+    }
+
     override suspend fun load(url: String): LoadResponse {
-        val document = app.get(url).document
-        val title = document.selectFirst("h1.entry-title")?.text()?.trim() ?: "No Title"
-        val poster = document.selectFirst("div.post-thumbnail figure img")?.attr("src")
-            ?: "https://images3.alphacoders.com/134/1342304.jpeg"  // Default poster if not found
+
+        val media = parseJson<Media>(url)
+        val document = app.get(media.url).document
+
+        // Use the mediaType or any other indicator to determine if this is a TV show or a movie
+        val title = media.mediaType ?: "No Title"
+        val defaultPoster = "https://images3.alphacoders.com/134/1342304.jpeg"  // Default poster in case no poster is found
         val plot = document.selectFirst("div.entry-content p")?.text()?.trim()
             ?: document.selectFirst("meta[name=twitter:description]")?.attr("content")
+        val year = (document.selectFirst("span.year")?.text()?.trim()
+            ?: document.selectFirst("meta[property=og:updated_time]")?.attr("content")
+                ?.substringBefore("-"))?.toIntOrNull()
 
-        // Check if there are episodes for the specific arc
+        // Check if there are episodes (for TV shows)
         val episodeElements = document.select("ul.seasons-lst.anm-a li")
 
         return if (episodeElements.isEmpty()) {
-            // Handle as a movie or standalone content if no episodes found
-            newMovieLoadResponse(title, url, TvType.Movie) {
-                this.posterUrl = poster
+            // It's a movie
+            newMovieLoadResponse(title, url, TvType.Movie, Media(
+                media.url,
+                mediaType = 1 // Assuming 1 stands for movies
+            ).toJson()) {
+                this.posterUrl = defaultPoster
                 this.plot = plot
+                this.year = year
             }
         } else {
-            // Load episodes for the arc
+            // It's a TV series
             val episodes = episodeElements.mapNotNull {
-                val episodeTitle = it.selectFirst("h3.title")?.ownText() ?: return@mapNotNull null
-                val episodeUrl = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
-                Episode(Media(episodeUrl).toJson(), episodeTitle)
+                val name = it.selectFirst("h3.title")?.ownText() ?: "null"
+                val href = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
+                val seasonNumber = it.selectFirst("h3.title > span")?.text().toString().substringAfter("S").substringBefore("-")
+                val season = seasonNumber.toIntOrNull()
+
+                // Get the poster for the arc from ArcPosters.kt
+                val arcPoster = ArcPosters.arcPosters[season] ?: defaultPoster
+
+                Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = arcPoster, season = season)
             }
 
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = poster
+                this.posterUrl = defaultPoster  // You can use a more specific poster for the series itself if available
                 this.plot = plot
+                this.year = year
             }
         }
     }
@@ -83,18 +124,20 @@ open class OnepaceProvider : MainAPI() {
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit
+        callback: (ExtractorLink) -> Unit,
     ): Boolean {
         val media = parseJson<Media>(data)
-        val document = app.get(media.url).document
-        val iframe = document.selectFirst("iframe")?.attr("src")
-            ?: throw ErrorLoadingException("No iframe found")
-        loadExtractor(iframe, subtitleCallback, callback)
+        val body = app.get(media.url).document.selectFirst("body")?.attr("class") ?: return false
+        val term = Regex("""(?:term|postid)-(\d+)""").find(body)?.groupValues?.get(1) ?: throw ErrorLoadingException("no id found")
+        for (i in 0..4) {
+            val link = app.get("$mainUrl/?trdekho=$i&trid=$term&trtype=${media.mediaType}")
+                .document.selectFirst("iframe")?.attr("src")
+                ?: throw ErrorLoadingException("no iframe found")
+            Log.d("VadER", link)
+            loadExtractor(link, subtitleCallback, callback)
+        }
         return true
     }
-
-    // ArcEntry data class for managing arc information
-    data class ArcEntry(val title: String, val url: String, val posterUrl: String)
 
     data class Media(val url: String, val poster: String? = null, val mediaType: String? = null)
 }
