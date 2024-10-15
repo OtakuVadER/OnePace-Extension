@@ -1,0 +1,8 @@
+{
+  "name": "OnePace Extension",
+  "description": "This repo contains OnePace Extension!",
+  "manifestVersion": 1,
+  "pluginLists": [
+    "https://raw.githubusercontent.com/OtakuVadER/OnePace-Extension/builds/plugins.json"
+  ]
+}

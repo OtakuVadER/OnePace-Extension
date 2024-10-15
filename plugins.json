@@ -1,0 +1,40 @@
+[
+    {
+        "iconUrl": "https://raw.githubusercontent.com/OtakuVadER/OnePace-Extension/logos/onepace.png",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/OtakuVadER/OnePace-Extension",
+        "fileSize": 22191,
+        "status": 1,
+        "language": "en",
+        "authors": [
+            "OtakuVadER"
+        ],
+        "tvTypes": [
+            "Anime"
+        ],
+        "version": 4,
+        "internalName": "OnePace",
+        "description": "One Pace",
+        "url": "https://raw.githubusercontent.com/OtakuVadER/OnePace-Extension/builds/OnePace.cs3",
+        "name": "OnePace"
+    },
+    {
+        "iconUrl": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Korduene_Logo.png",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/OtakuVadER/OnePace-Extension",
+        "fileSize": 3473,
+        "status": 0,
+        "language": "en",
+        "authors": [
+            "Template"
+        ],
+        "tvTypes": [
+            
+        ],
+        "version": -1,
+        "internalName": "ProviderTemplate",
+        "description": "Lorem ipsum",
+        "url": "https://raw.githubusercontent.com/OtakuVadER/OnePace-Extension/builds/ProviderTemplate.cs3",
+        "name": "ProviderTemplate"
+    }
+]
