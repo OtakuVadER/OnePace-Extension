@@ -1,6 +1,5 @@
 package com.OtakuVadER
 
-
 //import android.util.Log
 import android.annotation.SuppressLint
 import android.util.Log
@@ -62,17 +61,17 @@ open class VidStream : ExtractorApi() {
     override var name = "VidStream"
     override var mainUrl = "https://vidstreamnew.xyz"
     override val requiresReferer = false
-	private var key: String? = null
+    private var key: String? = null
 
     @SuppressLint("SuspiciousIndentation")
     @Suppress("NAME_SHADOWING")
-	override suspend fun getUrl(
+    override suspend fun getUrl(
         url: String,
         referer: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
-    ) {		
-		val master = Regex("\\s*=\\s*'([^']+)").find(
+    ) {
+        val master = Regex("\\s*=\\s*'([^']+)").find(
             app.get(
                 url,
                 referer = referer ?: "",
@@ -82,9 +81,9 @@ open class VidStream : ExtractorApi() {
                 )
             ).text
         )?.groupValues?.get(1)
-		
-		val key = fetchKey() ?: throw ErrorLoadingException("Unable to get key")
-		
+
+        val key = fetchKey() ?: throw ErrorLoadingException("Unable to get key")
+
         val decrypt = cryptoAESHandler(master ?: return, key.toByteArray(), false)
             ?.replace("\\", "")
             ?: throw ErrorLoadingException("failed to decrypt")
@@ -120,28 +119,28 @@ open class VidStream : ExtractorApi() {
                 "user-agent" to USER_AGENT,
             )
 
-		callback.invoke(
+        callback.invoke(
             ExtractorLink(
                 "VidStream",
                 "VidStream",
                 url = source ?: return,
                 referer = "$mainUrl/",
                 quality = Qualities.P1080.value,
-				INFER_TYPE,
+                INFER_TYPE,
                 headers = header,
             )
         )
-    }	
+    }
 
     private suspend fun fetchKey(): String? {
         return app.get("https://raw.githubusercontent.com/Rowdy-Avocado/multi-keys/keys/index.html")
             .parsedSafe<Keys>()?.key?.get(0)?.also { key = it }
     }
-	
-	data class Keys(
+
+    data class Keys(
         @JsonProperty("chillx") val key: List<String>
     )
-    
+
 }
 
 
@@ -169,6 +168,3 @@ open class GDMirrorbot : ExtractorApi() {
         }
     }
 }
-
-
-data class Media(val url: String, val poster: String? = null, val mediaType: Int? = null)
