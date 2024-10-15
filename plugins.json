@@ -1,0 +1,21 @@
+[
+    {
+        "iconUrl": "https://raw.githubusercontent.com/OtakuVadER/OnePace-Extension/logos/onepace.png",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/OtakuVadER/OnePace-Extension",
+        "fileSize": 20716,
+        "status": 1,
+        "language": "en",
+        "authors": [
+            "OtakuVadER"
+        ],
+        "tvTypes": [
+            "Anime"
+        ],
+        "version": 5,
+        "internalName": "OnePace",
+        "description": "One Pace",
+        "url": "https://raw.githubusercontent.com/OtakuVadER/OnePace-Extension/builds/OnePace.cs3",
+        "name": "OnePace"
+    }
+]
