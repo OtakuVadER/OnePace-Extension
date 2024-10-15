@@ -38,8 +38,8 @@ open class OnepaceProvider : MainAPI() {
     }
 
     private fun Element.toSearchResult(): AnimeSearchResponse {
-        val hreftitle= this.selectFirst("picture img")?.attr("alt")
-        var href=""
+        val hreftitle = this.selectFirst("picture img")?.attr("alt")
+        var href = ""
         if (hreftitle!!.isNotEmpty()) {
             if (hreftitle.contains("Dub")) {
                 href = "https://onepace.me/series/one-pace-english-dub"
@@ -47,22 +47,18 @@ open class OnepaceProvider : MainAPI() {
                 href = "https://onepace.me/series/one-pace-english-sub"
             }
         }
-        val title = this.selectFirst("p")?.text() ?:""
+        val title = this.selectFirst("p")?.text() ?: ""
         val posterUrl = this.selectFirst("img")?.attr("data-src")
-        val dubtype:Boolean
-        val subtype:Boolean
-        if (hreftitle.contains("Dub"))
-        {
+        val dubtype: Boolean
+        val subtype: Boolean
+        if (hreftitle.contains("Dub")) {
             dubtype = true
-            subtype =false
-        }
-        else
-        {
+            subtype = false
+        } else {
             dubtype = false
             subtype = true
-
         }
-        return newAnimeSearchResponse(title, Media(href, posterUrl,title).toJson(), TvType.Anime, false) {
+        return newAnimeSearchResponse(title, Media(href, posterUrl, title).toJson(), TvType.Anime, false) {
             this.posterUrl = posterUrl
             addDubStatus(dubExist = dubtype, subExist = subtype)
         }
@@ -107,9 +103,11 @@ open class OnepaceProvider : MainAPI() {
             val episodes = episodeElements.mapNotNull {
                 val name = it.selectFirst("h3.title")?.ownText() ?: "null"
                 val href = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
-                val arcPoster = it.selectFirst("div > div > figure > img")?.attr("src") ?: defaultPoster  // Fetch arc-specific poster
                 val seasonNumber = it.selectFirst("h3.title > span")?.text().toString().substringAfter("S").substringBefore("-")
                 val season = seasonNumber.toIntOrNull()
+
+                // Get the poster for the arc from ArcPosters.kt
+                val arcPoster = ArcPosters.arcPosters[season] ?: defaultPoster
 
                 Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = arcPoster, season = season)
             }
@@ -135,12 +133,11 @@ open class OnepaceProvider : MainAPI() {
             val link = app.get("$mainUrl/?trdekho=$i&trid=$term&trtype=${media.mediaType}")
                 .document.selectFirst("iframe")?.attr("src")
                 ?: throw ErrorLoadingException("no iframe found")
-            Log.d("VadER",link)
-            loadExtractor(link,subtitleCallback, callback)
+            Log.d("VadER", link)
+            loadExtractor(link, subtitleCallback, callback)
         }
         return true
     }
 
     data class Media(val url: String, val poster: String? = null, val mediaType: String? = null)
-
 }
