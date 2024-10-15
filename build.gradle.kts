@@ -53,14 +53,17 @@ subprojects {
             targetCompatibility = JavaVersion.VERSION_1_8
         }
 
-       tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).configureEach {
-    it.kotlinOptions.jvmTarget = "1.8"
-    it.kotlinOptions.freeCompilerArgs = it.kotlinOptions.freeCompilerArgs + listOf(
-        "-Xno-call-assertions",
-        "-Xno-param-assertions",
-        "-Xno-receiver-assertions"
-    )
-}
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+            kotlinOptions {
+                jvmTarget = "1.8"
+                freeCompilerArgs = freeCompilerArgs + listOf(
+                    "-Xno-call-assertions",
+                    "-Xno-param-assertions",
+                    "-Xno-receiver-assertions"
+                )
+            }
+        }
+    }
 
     dependencies {
         val apk by configurations
