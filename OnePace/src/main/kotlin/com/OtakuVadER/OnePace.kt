@@ -5,7 +5,6 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
-import org.jsoup.nodes.Element
 
 open class OnepaceProvider : MainAPI() {
     override var mainUrl = "https://onepace.me"
@@ -13,16 +12,14 @@ open class OnepaceProvider : MainAPI() {
     override val hasMainPage = true
     override var lang = "en"
 
-    override val supportedTypes =
-        setOf(
-            TvType.Anime,
-        )
+    override val supportedTypes = setOf(
+        TvType.Anime,
+    )
 
-    override val mainPage =
-        mainPageOf(
-            "/series/one-pace-english-sub/" to "One Pace English Sub",
-            "/series/one-pace-english-dub/" to "One Pace English Dub"
-        )
+    override val mainPage = mainPageOf(
+        "/series/one-pace-english-sub/" to "One Pace English Sub",
+        "/series/one-pace-english-dub/" to "One Pace English Dub"
+    )
 
     // This function will fetch each arc individually and list them separately on the homepage
     override suspend fun getMainPage(
@@ -32,8 +29,8 @@ open class OnepaceProvider : MainAPI() {
         val arcs = ArcPosters.arcPosters
         val home = arcs.map { (arcNumber, arcPosterUrl) ->
             // Create a separate entry for each arc
-            val title = "Arc $arcNumber"
-            val arcUrl = "$mainUrl/series/one-pace-arc-$arcNumber/"  // Assuming each arc has a unique URL pattern
+            val title = "One Pace Arc $arcNumber"
+            val arcUrl = "$mainUrl/arc-$arcNumber/"  // Example URL structure for each arc
             newAnimeSearchResponse(title, Media(arcUrl, arcPosterUrl, title).toJson(), TvType.Anime, false) {
                 this.posterUrl = arcPosterUrl
             }
