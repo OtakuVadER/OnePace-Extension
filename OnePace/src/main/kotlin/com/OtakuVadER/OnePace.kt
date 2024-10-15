@@ -13,16 +13,12 @@ open class OnepaceProvider : MainAPI() {
     override val hasMainPage = true
     override var lang = "en"
 
-    override val supportedTypes =
-        setOf(
-            TvType.Anime,
-        )
+    override val supportedTypes = setOf(TvType.Anime)
 
-    override val mainPage =
-        mainPageOf(
-            "/series/one-pace-english-sub/" to "One Pace English Sub",
-            "/series/one-pace-english-dub/" to "One Pace English Dub",
-        )
+    override val mainPage = mainPageOf(
+        "/series/one-pace-english-sub/" to "One Pace English Sub",
+        "/series/one-pace-english-dub/" to "One Pace English Dub",
+    )
 
     override suspend fun getMainPage(
         page: Int,
@@ -30,41 +26,26 @@ open class OnepaceProvider : MainAPI() {
     ): HomePageResponse {
         val link = "$mainUrl${request.data}"
         val document = app.get(link).document
-        val home =
-            document.select("div.seasons.aa-crd > div.seasons-bx").map {
-                it.toSearchResult()
-            }
+        val home = document.select("div.seasons.aa-crd > div.seasons-bx").map {
+            it.toSearchResult()
+        }
         return newHomePageResponse(request.name, home)
     }
 
     private fun Element.toSearchResult(): AnimeSearchResponse {
-        val hreftitle= this.selectFirst("picture img")?.attr("alt")
-        var href=""
-        if (hreftitle!!.isNotEmpty()) {
-            if (hreftitle.contains("Dub")) {
-                href = "https://onepace.me/series/one-pace-english-dub"
-            } else {
-                href = "https://onepace.me/series/one-pace-english-sub"
-            }
+        val hreftitle = this.selectFirst("picture img")?.attr("alt") ?: ""
+        val href = if (hreftitle.contains("Dub", ignoreCase = true)) {
+            "https://onepace.me/series/one-pace-english-dub"
+        } else {
+            "https://onepace.me/series/one-pace-english-sub"
         }
-        val title = this.selectFirst("p")?.text() ?:""
+        val title = this.selectFirst("p")?.text() ?: ""
         val posterUrl = this.selectFirst("img")?.attr("data-src")
-        val dubtype:Boolean
-        val subtype:Boolean
-        if (hreftitle.contains("Dub"))
-        {
-            dubtype = true
-            subtype =false
-        }
-        else
-        {
-            dubtype = false
-            subtype = true
+        val isDub = hreftitle.contains("Dub", ignoreCase = true)
 
-        }
-        return newAnimeSearchResponse(title, Media(href, posterUrl,title).toJson(), TvType.Anime, false) {
+        return newAnimeSearchResponse(title, Media(href, posterUrl, title).toJson(), TvType.Anime, false) {
             this.posterUrl = posterUrl
-            addDubStatus(dubExist = dubtype, subExist = subtype)
+            addDubStatus(dubExist = isDub, subExist = !isDub)
         }
     }
 
@@ -76,19 +57,20 @@ open class OnepaceProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
-
         val media = parseJson<Media>(url)
         val document = app.get(media.url).document
-        val ArcINT=media.mediaType?.substringAfter("Arc ")
-        val element= document.selectFirst("div.seasons.aa-crd > div.seasons-bx:contains(S$ArcINT-)")
-        val title = media.mediaType ?:"No Title"
-        val poster = "https://images3.alphacoders.com/134/1342304.jpeg"
+        val arcInt = media.mediaType?.substringAfter("Arc ")
+        val element = document.selectFirst("div.seasons.aa-crd > div.seasons-bx:contains(S$arcInt-)")
+
+        val title = media.mediaType ?: "No Title"
+        val poster = "https://images.squarespace-cdn.com/content/v1/63861c061224cb4baf13451f/fbbc950f-b2c9-430d-8fe6-c09c93c344cc/Return+of+Toy+Boy.png"
         val plot = document.selectFirst("div.entry-content p")?.text()?.trim()
             ?: document.selectFirst("meta[name=twitter:description]")?.attr("content")
         val year = (document.selectFirst("span.year")?.text()?.trim()
             ?: document.selectFirst("meta[property=og:updated_time]")?.attr("content")
                 ?.substringBefore("-"))?.toIntOrNull()
         val lst = element?.select("ul.seasons-lst.anm-a li")
+
         return if (lst == null || lst.isEmpty()) {
             newMovieLoadResponse(title, url, TvType.Movie, Media(
                 media.url,
@@ -99,14 +81,15 @@ open class OnepaceProvider : MainAPI() {
                 this.year = year
             }
         } else {
-            @Suppress("NAME_SHADOWING") val episodes = lst.mapNotNull {
+            val episodes = lst.mapNotNull {
                 val name = it.selectFirst("h3.title")?.ownText() ?: return@mapNotNull null
                 val href = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
                 val seasonNumberText = it.selectFirst("h3.title > span")?.text()
                 val seasonNumber = seasonNumberText?.substringAfter("S")?.substringBefore("-")?.toIntOrNull()
-                val poster = "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/OnePack.png"
-                Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = poster,season = seasonNumber)
+                val episodePoster = "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/OnePack.png"
+                Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = episodePoster, season = seasonNumber)
             }
+
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = poster
                 this.plot = plot
@@ -128,12 +111,11 @@ open class OnepaceProvider : MainAPI() {
             val link = app.get("$mainUrl/?trdekho=$i&trid=$term&trtype=${media.mediaType}")
                 .document.selectFirst("iframe")?.attr("src")
                 ?: throw ErrorLoadingException("no iframe found")
-            Log.d("Phisher",link)
-            loadExtractor(link,subtitleCallback, callback)
+            Log.d("VadER", link)
+            loadExtractor(link, subtitleCallback, callback)
         }
         return true
     }
 
     data class Media(val url: String, val poster: String? = null, val mediaType: String? = null)
-
 }
