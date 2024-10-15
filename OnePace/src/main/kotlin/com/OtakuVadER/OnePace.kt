@@ -82,7 +82,7 @@ open class OnepaceProvider : MainAPI() {
         
         // Use the mediaType or any other indicator to determine if this is a TV show or a movie
         val title = media.mediaType ?: "No Title"
-        val poster = "https://images3.alphacoders.com/134/1342304.jpeg"  // default poster
+        val defaultPoster = "https://images3.alphacoders.com/134/1342304.jpeg"  // Default poster in case no poster is found
         val plot = document.selectFirst("div.entry-content p")?.text()?.trim()
             ?: document.selectFirst("meta[name=twitter:description]")?.attr("content")
         val year = (document.selectFirst("span.year")?.text()?.trim()
@@ -98,7 +98,7 @@ open class OnepaceProvider : MainAPI() {
                 media.url,
                 mediaType = 1 // Assuming 1 stands for movies
             ).toJson()) {
-                this.posterUrl = poster
+                this.posterUrl = defaultPoster
                 this.plot = plot
                 this.year = year
             }
@@ -107,14 +107,15 @@ open class OnepaceProvider : MainAPI() {
             val episodes = episodeElements.mapNotNull {
                 val name = it.selectFirst("h3.title")?.ownText() ?: "null"
                 val href = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
-                val episodePoster = "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/OnePack.png"
+                val arcPoster = it.selectFirst("div > div > figure > img")?.attr("src") ?: defaultPoster  // Fetch arc-specific poster
                 val seasonNumber = it.selectFirst("h3.title > span")?.text().toString().substringAfter("S").substringBefore("-")
                 val season = seasonNumber.toIntOrNull()
-                Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = episodePoster, season = season)
+
+                Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = arcPoster, season = season)
             }
             
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = poster
+                this.posterUrl = defaultPoster  // You can use a more specific poster for the series itself if available
                 this.plot = plot
                 this.year = year
             }
@@ -134,7 +135,7 @@ open class OnepaceProvider : MainAPI() {
             val link = app.get("$mainUrl/?trdekho=$i&trid=$term&trtype=${media.mediaType}")
                 .document.selectFirst("iframe")?.attr("src")
                 ?: throw ErrorLoadingException("no iframe found")
-            Log.d("Phisher",link)
+            Log.d("VadER",link)
             loadExtractor(link,subtitleCallback, callback)
         }
         return true
