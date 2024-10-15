@@ -1,4 +1,4 @@
-version = 2
+version = 3
 
 
 cloudstream {
@@ -6,7 +6,7 @@ cloudstream {
     // All of these properties are optional, you can safely remove them
 
     description = "One Pace"
-    authors = listOf("OtakuvadER")
+    authors = listOf("OtakuVadER")
 
     /**
      * Status int as the following:
