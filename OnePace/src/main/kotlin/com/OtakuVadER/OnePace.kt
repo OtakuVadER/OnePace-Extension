@@ -99,13 +99,13 @@ open class OnepaceProvider : MainAPI() {
                 this.year = year
             }
         } else {
-            @Suppress("NAME_SHADOWING") val episodes = element.select("ul.seasons-lst.anm-a li").mapNotNull {
-                val name = it.selectFirst("h3.title")?.ownText() ?: "null"
+            @Suppress("NAME_SHADOWING") val episodes = lst.mapNotNull {
+                val name = it.selectFirst("h3.title")?.ownText() ?: return@mapNotNull null
                 val href = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
-                val poster= "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/OnePack.png"
-                val seasonnumber = it.selectFirst("h3.title > span")?.text().toString().substringAfter("S").substringBefore("-")
-                val season=seasonnumber.toIntOrNull()
-                Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = poster,season = season)
+                val seasonNumberText = it.selectFirst("h3.title > span")?.text()
+                val seasonNumber = seasonNumberText?.substringAfter("S")?.substringBefore("-")?.toIntOrNull()
+                val poster = "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/OnePack.png"
+                Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = poster,season = seasonNumber)
             }
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = poster
