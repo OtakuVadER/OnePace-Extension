@@ -63,7 +63,7 @@ open class OnepaceProvider : MainAPI() {
         val element = document.selectFirst("div.seasons.aa-crd > div.seasons-bx:contains(S$arcInt-)")
 
         val title = media.mediaType ?: "No Title"
-        val poster = "https://images.squarespace-cdn.com/content/v1/63861c061224cb4baf13451f/fbbc950f-b2c9-430d-8fe6-c09c93c344cc/Return+of+Toy+Boy.png"
+        val poster = "https://images3.alphacoders.com/134/1342304.jpeg"
         val plot = document.selectFirst("div.entry-content p")?.text()?.trim()
             ?: document.selectFirst("meta[name=twitter:description]")?.attr("content")
         val year = (document.selectFirst("span.year")?.text()?.trim()
@@ -71,7 +71,13 @@ open class OnepaceProvider : MainAPI() {
                 ?.substringBefore("-"))?.toIntOrNull()
         val lst = element?.select("ul.seasons-lst.anm-a li")
 
+        // Debugging logs to inspect if the `element` and `lst` are correctly populated
+        Log.d("OnepaceProvider", "Element found: $element")
+        Log.d("OnepaceProvider", "List of episodes: $lst")
+
         return if (lst == null || lst.isEmpty()) {
+            // If no episodes are found, log this and return as a Movie type (default behavior)
+            Log.w("OnepaceProvider", "No episodes found for $title; returning as a Movie")
             newMovieLoadResponse(title, url, TvType.Movie, Media(
                 media.url,
                 mediaType = 1
@@ -81,15 +87,22 @@ open class OnepaceProvider : MainAPI() {
                 this.year = year
             }
         } else {
+            // If episodes are found, parse and return them as a TvSeries
             val episodes = lst.mapNotNull {
                 val name = it.selectFirst("h3.title")?.ownText() ?: return@mapNotNull null
                 val href = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
                 val seasonNumberText = it.selectFirst("h3.title > span")?.text()
                 val seasonNumber = seasonNumberText?.substringAfter("S")?.substringBefore("-")?.toIntOrNull()
                 val episodePoster = "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/OnePack.png"
+
+                // Debug each episode being parsed
+                Log.d("OnepaceProvider", "Parsed episode: $name, URL: $href, Season: $seasonNumber")
+                
                 Episode(Media(href, mediaType = 2).toJson(), name, posterUrl = episodePoster, season = seasonNumber)
             }
 
+            // Return as a TvSeries if episodes are found
+            Log.i("OnepaceProvider", "Returning $title as a TvSeries with ${episodes.size} episodes")
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = poster
                 this.plot = plot
