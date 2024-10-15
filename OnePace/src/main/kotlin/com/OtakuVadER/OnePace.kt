@@ -32,36 +32,40 @@ open class OnepaceProvider : MainAPI() {
         val document = app.get(link).document
         val home =
             document.select("div.seasons.aa-crd > div.seasons-bx").map {
-                it.toSearchResult()
+                it.toSearchResult(request.data) // Pass the request data to differentiate between sub and dub
             }
         return newHomePageResponse(request.name, home)
     }
 
-    private fun Element.toSearchResult(): AnimeSearchResponse {
+    private fun Element.toSearchResult(requestData: String): AnimeSearchResponse {
         val hreftitle = this.selectFirst("picture img")?.attr("alt")
         var href = ""
         var seasonNumber: Int? = null
         if (hreftitle!!.isNotEmpty()) {
-            href = if (hreftitle.contains("Dub")) {
+            // Determine the correct URL for sub or dub
+            href = if (requestData.contains("dub")) {
                 "https://onepace.me/series/one-pace-english-dub"
             } else {
                 "https://onepace.me/series/one-pace-english-sub"
             }
+
             // Extract the season number from the title
             seasonNumber = hreftitle.substringAfter("S").substringBefore(" ").toIntOrNull()
         }
         val title = this.selectFirst("p")?.text() ?: ""
         val posterUrl = ArcPosters.arcPosters[seasonNumber] // Get the arc poster from ArcPosters
             ?: this.selectFirst("img")?.attr("data-src") // Fall back to the scraped poster if not found
+
         val dubtype: Boolean
         val subtype: Boolean
-        if (hreftitle.contains("Dub")) {
+        if (requestData.contains("dub")) {
             dubtype = true
             subtype = false
         } else {
             dubtype = false
             subtype = true
         }
+
         return newAnimeSearchResponse(title, Media(href, posterUrl, title).toJson(), TvType.Anime, false) {
             this.posterUrl = posterUrl
             addDubStatus(dubExist = dubtype, subExist = subtype)
@@ -71,7 +75,7 @@ open class OnepaceProvider : MainAPI() {
     override suspend fun search(query: String): List<AnimeSearchResponse> {
         val document = app.get("$mainUrl/?s=$query").document
         return document.select("ul[data-results] li article").mapNotNull {
-            it.toSearchResult()
+            it.toSearchResult("") // You can pass an empty string or modify as needed
         }
     }
 
