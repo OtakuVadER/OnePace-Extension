@@ -89,7 +89,7 @@ open class OnepaceProvider : MainAPI() {
             ?: document.selectFirst("meta[property=og:updated_time]")?.attr("content")
                 ?.substringBefore("-"))?.toIntOrNull()
         val lst = element?.select("ul.seasons-lst.anm-a li")
-        return if (lst?..isEmpty()) {
+        return if (lst!!.isEmpty()) {
             newMovieLoadResponse(title, url, TvType.Movie, Media(
                 media.url,
                 mediaType = 1
