@@ -9,7 +9,7 @@ import org.jsoup.nodes.Element
 
 open class OnepaceProvider : MainAPI() {
     override var mainUrl = "https://onepace.me"
-    override var name = "OnePace AD"
+    override var name = "OnePace"
     override val hasMainPage = true
     override var lang = "en"
 
