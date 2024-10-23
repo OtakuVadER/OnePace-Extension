@@ -9,7 +9,7 @@ import org.jsoup.nodes.Element
 
 open class OnepaceProvider : MainAPI() {
     override var mainUrl = "https://onepace.me"
-    override var name = "OnePace"
+    override var name = "OnePace AD"
     override val hasMainPage = true
     override var lang = "en"
 
@@ -38,7 +38,7 @@ open class OnepaceProvider : MainAPI() {
     }
 
     private fun Element.toSearchResult(): AnimeSearchResponse {
-        val hreftitle= this.selectFirst("picture img")?.attr("alt")
+        val hreftitle= this.selectFirst("img")?.attr("alt")
         var href=""
         if (hreftitle!!.isNotEmpty()) {
             if (hreftitle.contains("Dub")) {
@@ -76,7 +76,6 @@ open class OnepaceProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
-        Log.d("Phisher",url)
         val media = parseJson<Media>(url)
         val document = app.get(media.url).document
         val ArcINT=media.mediaType?.substringAfter("Arc ")
